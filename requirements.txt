@@ -1,0 +1,7 @@
+discord-py
+discord-py-interactions
+requests
+pynacl
+ffmpeg
+bs4
+discord-py-slash-command

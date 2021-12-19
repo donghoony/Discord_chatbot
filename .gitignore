@@ -1,0 +1,7 @@
+.idea/
+venv/
+Cogs/Reinforce/reinforce.pkl
+chatbot_secrets.py
+__pycache__/
+*.pyc
+
