@@ -13,7 +13,7 @@ def init():
     unloadCogList = ["voiceclientcog.py"]
     print("Loading Cogs: (", end="")
     for root, subdirs, files in walk('./Cogs'):
-        root = root.replace("\\", ".", -1)
+        root = root.replace("\\", ".", -1).replace('/', ".", -1)
         for f in files:
             if f.endswith('cog.py') and f not in unloadCogList:
                 bot.load_extension(f"{root[2:]}.{f[:-3]}")
