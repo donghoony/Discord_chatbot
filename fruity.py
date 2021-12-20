@@ -10,7 +10,7 @@ def init():
     bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
     slash = SlashCommand(bot, sync_commands=True)
 
-    unloadCogList = ["voiceclientcog.py"]
+    unloadCogList = [""]
     print("Loading Cogs: (", end="")
     for root, subdirs, files in walk('./Cogs'):
         root = root.replace("\\", ".", -1).replace('/', ".", -1)
