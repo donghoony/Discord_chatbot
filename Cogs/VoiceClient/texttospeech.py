@@ -4,13 +4,11 @@ from collections import deque
 
 from discord import FFmpegPCMAudio
 
-from Cogs.VoiceClient.voiceclientcog import VoiceClient
 from chatbot_secrets import KAKAO_KEY
 from requests import post
 
-class TTSCog(VoiceClient):
+class TTSCog(commands.Cog):
     def __init__(self, bot):
-        super().__init__()
         self.bot = bot
         self.queue = deque()
         self.KAKAO_KEY = KAKAO_KEY

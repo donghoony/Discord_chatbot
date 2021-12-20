@@ -6,7 +6,6 @@ import re
 import requests
 import html
 from collections import deque
-
 from chatbot_secrets import YOUTUBE_KEY
 
 class MusicCog(commands.Cog):
@@ -17,16 +16,15 @@ class MusicCog(commands.Cog):
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         self.YOUTUBE_KEY = YOUTUBE_KEY
         self.queue = deque()
-        self.VoiceClient = self.bot.get_cog("VoiceClient")
 
     async def play_url(self, ctx, url):
         with youtube_dl.YoutubeDL(self.YDL_OPTIONS) as ydl:
             info = ydl.extract_info(url, download=False)
             URL = info['formats'][0]['url']
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(URL, **self.FFMPEG_OPTIONS), volume=0.02)
-        voice_client = await self.VoiceClient.get_current_voice_client()
+        voice_client = await self.get_current_voice_client()
         if not voice_client:
-            voice_client = await self.VoiceClient.join(ctx)
+            voice_client = await self.join(ctx)
         voice_client.play(source)
 
     @commands.command(name="volume", aliases=['v'])

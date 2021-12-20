@@ -3,8 +3,12 @@ from time import time
 from discord import FFmpegPCMAudio
 import asyncio
 
-class VoiceClient(commands.Cog):
-    def __init__(self):
+from Cogs.VoiceClient.texttospeech import TTSCog
+from Cogs.music import MusicCog
+
+class VoiceClientCog(TTSCog, MusicCog):
+    def __init__(self, bot):
+        super().__init__(bot)
         self.latest_play = ["CHANNEL_ID", time()]
         self.bot = None
 
@@ -33,4 +37,4 @@ class VoiceClient(commands.Cog):
             await voice_client.disconnect()
 
 def setup(bot):
-    bot.add_cog(VoiceClient(bot))
+    bot.add_cog(VoiceClientCog(bot))
