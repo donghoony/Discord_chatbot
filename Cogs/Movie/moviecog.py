@@ -4,7 +4,7 @@ from datetime import timedelta, datetime
 from discord import Embed
 from discord.ext import commands, tasks
 from Cogs.Movie.screentime import ScreenTime
-
+from discord import Colour
 from json.decoder import JSONDecoder
 import xml.etree.ElementTree as ET
 
@@ -12,10 +12,10 @@ class MovieCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.beforemsg = None
-        self.no_IMAX_date = "20211224"
+        self.no_IMAX_date = "20211226"
         self.already_opened_set = set()
         self.printed_count = 1
-        pass
+        self.movie_remainseat_dict = dict()
 
     def IMAX_print_process(self):
         print(".", end="" if self.printed_count%100 else "\n")
@@ -51,7 +51,7 @@ class MovieCog(commands.Cog):
             if not t:
                 continue
             if "20027596" in t[0]['href']:
-                timetable += [ScreenTime(x) for x in t]
+                timetable += [ScreenTime(x, date=date) for x in t]
         return timetable
 
     def search_movie_deeper(self, date):
@@ -60,7 +60,9 @@ class MovieCog(commands.Cog):
                    "Accept":"application/json, text/javascript, */*; q=0.01",
                    "Content-Type":"application/json",
                    "X-Requested-With":"XMLHttpRequest"}
-        json_body = {"REQSITE":"x02PG4EcdFrHKluSEQQh4A==","MovieGroupCd":"4h5e0F6BOQ8nzPmVqjuy+g==","TheaterCd":"LMP+XuzWskJLFG41YQ7HGA==","PlayYMD":"QuBGrFzyucrUVVyggOh6Ig==","MovieType_Cd":"nG6tVgEQPGU2GvOIdnwTjg==","Subtitle_CD":"nG6tVgEQPGU2GvOIdnwTjg==","SOUNDX_YN":"nG6tVgEQPGU2GvOIdnwTjg==","Third_Attr_CD":"nG6tVgEQPGU2GvOIdnwTjg==","IS_NORMAL":"nG6tVgEQPGU2GvOIdnwTjg==","Language":"zqWM417GS6dxQ7CIf65+iA=="}
+        json_body = {"REQSITE":"x02PG4EcdFrHKluSEQQh4A==","MovieGroupCd":"4h5e0F6BOQ8nzPmVqjuy+g==","TheaterCd":"LMP+XuzWskJLFG41YQ7HGA==",
+                     "PlayYMD":"QuBGrFzyucrUVVyggOh6Ig==","MovieType_Cd":"nG6tVgEQPGU2GvOIdnwTjg==","Subtitle_CD":"nG6tVgEQPGU2GvOIdnwTjg==",
+                     "SOUNDX_YN":"nG6tVgEQPGU2GvOIdnwTjg==","Third_Attr_CD":"nG6tVgEQPGU2GvOIdnwTjg==","IS_NORMAL":"nG6tVgEQPGU2GvOIdnwTjg==","Language":"zqWM417GS6dxQ7CIf65+iA=="}
         decoder = JSONDecoder()
         response = requests.post(url, headers=headers, json=json_body)
         content = response.content.decode('utf-8')
@@ -82,18 +84,25 @@ class MovieCog(commands.Cog):
             return ret
 
     def get_embed(self, table):
-        embed = Embed()
+        embed = Embed(title=f"UPDATE: {str(datetime.now())[:-7]}", colour=Colour.orange())
         before_movie = ScreenTime(None)
         for i in table:
             i:ScreenTime
             if i.screen != before_movie.screen:
                 embed.add_field(inline=False, name="- "*30, value=f"**{i.screen}**")
             embed.add_field(name=f"{i.startTime} ~ {i.endTime}",
-                            value=f"잔여 {i.remainSeats}석, [HERE]({i.url})",
+                            value=f"잔여 {i.remainSeats}석 ([LINK]({i.url}))" if i.remainSeats > 0 else "~~매진~~",
                             inline=True)
             before_movie = i
-        embed.set_footer(text=f"{str(datetime.now())[:-7]}")
         return embed
+
+    def check_lost_ticket(self, screen:ScreenTime):
+        try:
+            if self.movie_remainseat_dict[screen.tuplize()] != screen.remainSeats:
+                return screen
+        except KeyError:
+            return None
+        return None
 
     @tasks.loop(seconds=5)
     async def run(self, ctx):
@@ -101,6 +110,15 @@ class MovieCog(commands.Cog):
         table = self.search_movie_deeper("20211225")
         for screen in self.get_new_opened_screen(table):
             await ctx.send(f"{screen} OPENED")
+
+        # 취소표 발견시 알림
+        for screen in table:
+            screen : ScreenTime
+            if self.check_lost_ticket(screen) is not None:
+                await ctx.send(embed=Embed().add_field(name=f"**{screen.screen} ({screen.startTime} ~ {screen.endTime})**",
+                                                       value=f"취소표 발생: [LINK]({screen.url or ''})"))
+            self.movie_remainseat_dict[screen.tuplize()] = screen.remainSeats
+
         try:
             await self.beforemsg.edit(embed=self.get_embed(table))
         except:
