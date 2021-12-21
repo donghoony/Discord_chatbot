@@ -1,3 +1,4 @@
+import discord.errors
 import requests
 from bs4 import BeautifulSoup
 from datetime import timedelta, datetime
@@ -11,7 +12,7 @@ import xml.etree.ElementTree as ET
 class MovieCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.beforemsg = None
+        self.beforemsgs = []
         self.no_IMAX_date = "20211226"
         self.already_opened_set = set()
         self.printed_count = 1
@@ -29,7 +30,7 @@ class MovieCog(commands.Cog):
                 return
             imax = any([i.IMAX for i in table])
             if imax:
-                await ctx.send(f"IMAX OPEN {self.no_IMAX_date}", embed=self.get_embed([x for x in table if x.IMAX]))
+                await ctx.send(f"IMAX OPEN {self.no_IMAX_date}\n", embed=self.get_embed_list([x for x in table if x.IMAX])[0])
                 self.no_IMAX_date = str(datetime.strptime(self.no_IMAX_date, "%Y%m%d") + timedelta(days=1)).replace("-", "", -1)[:8]
             else:
                 break
@@ -83,22 +84,30 @@ class MovieCog(commands.Cog):
                     ret.append(movie.screen)
             return ret
 
-    def get_embed(self, table):
+    def get_embed_list(self, table):
+        embed_list = []
+        field_cnt = 0
         embed = Embed(title=f"UPDATE: {str(datetime.now())[:-7]}", colour=Colour.orange())
         before_movie = ScreenTime(None)
         for i in table:
             i:ScreenTime
             if i.screen != before_movie.screen:
                 embed.add_field(inline=False, name="- "*30, value=f"**{i.screen}**")
+            if field_cnt > 15:
+                embed_list.append(embed)
+                embed = Embed(colour=Colour.orange())
+                field_cnt = 0
             embed.add_field(name=f"{i.startTime} ~ {i.endTime}",
                             value=f"잔여 {i.remainSeats}석 ([LINK]({i.url}))" if i.remainSeats > 0 else "~~매진~~",
                             inline=True)
+            field_cnt += 1
             before_movie = i
-        return embed
+        embed_list.append(embed)
+        return embed_list
 
     def check_lost_ticket(self, screen:ScreenTime):
         try:
-            if self.movie_remainseat_dict[screen.tuplize()] != screen.remainSeats:
+            if self.movie_remainseat_dict[screen.tuplize()] < screen.remainSeats:
                 return screen
         except KeyError:
             return None
@@ -119,10 +128,16 @@ class MovieCog(commands.Cog):
                                                        value=f"취소표 발생: [LINK]({screen.url or ''})"))
             self.movie_remainseat_dict[screen.tuplize()] = screen.remainSeats
 
+        embeds = self.get_embed_list(table)
         try:
-            await self.beforemsg.edit(embed=self.get_embed(table))
-        except:
-            self.beforemsg = await ctx.send(embed=self.get_embed(table))
+            assert(len(self.beforemsgs) == len(embeds))
+            for msgidx in range(len(embeds)):
+                await self.beforemsgs[msgidx].edit(embed=embeds[msgidx])
+        except (discord.errors.NotFound, AssertionError):
+            self.beforemsgs = []
+            for e in embeds:
+                msg = await ctx.send(embed=e)
+                self.beforemsgs += [msg]
 
     @commands.command("movie")
     async def movie(self, ctx):
