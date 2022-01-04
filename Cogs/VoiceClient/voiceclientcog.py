@@ -10,7 +10,6 @@ class VoiceClientCog(TTSCog, MusicCog):
     def __init__(self, bot):
         super().__init__(bot)
         self.latest_play = ["CHANNEL_ID", time()]
-        self.bot = None
 
     async def get_current_voice_client(self):
         if len(self.bot.voice_clients) > 0:
