@@ -55,7 +55,7 @@ class TTSCog(commands.Cog):
             return
         voice_client = await self.join(ctx)
 
-        file = FFmpegPCMAudio(f"tts_outputs/audio_{self.audio_count}.mp3", options="-loglevel panic")
+        file = FFmpegPCMAudio(f"tts_outputs/audio_{self.audio_count}.mp3")
         self.cycle_audio()
 
         async def queue_play_tts(file):
